@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
-import { ParseSplits, SplitsFile } from './dtk-splits-parser';
+import _ from 'lodash';
+import { ParseSplits, SectionDef, SplitSection, SplitsFile } from './dtk-splits-parser';
 
 export class SymbolManager {
     private decorationType: vscode.TextEditorDecorationType;
@@ -55,7 +56,7 @@ export class SymbolManager {
             const line:vscode.TextLine = this.symbols.lineAt(line_index);
             const match = line.text.match(line_regex);
             if(match && match.groups) {
-                parsed.push({line:line_index,name:match.groups.name,address:+match.groups.addr});
+                parsed.push({line:line_index,name:match.groups.name,section:match.groups.section,address:+match.groups.addr});
             }
             else {
                 if(!(line_index === this.symbols.lineCount-1 && line.text==="")) {
@@ -108,7 +109,7 @@ export class SymbolManager {
 
             s.sections.forEach(section => {
                 let details = `**${section.name}**: 0x${section.start.toString(16).toUpperCase()}-0x${section.end.toString(16).toUpperCase()}`;
-                const line = line_lookup.get(section.start);
+                const line = line_lookup.get(section);
                 if(line) {
                     const args = [{ lineNumber: line, at: 'center' }];
                     const commandUri = vscode.Uri.parse(
@@ -135,8 +136,8 @@ export class SymbolManager {
                     }
                 }
             };
-            if(split.index >= 0) {
-                hover_lookup.set(line.line,hovers[split.index]);
+            if(split.split_index >= 0) {
+                hover_lookup.set(line.line,hovers[split.split_index]);
             }
             return ret;
         }));
@@ -162,29 +163,43 @@ export class SymbolManager {
             return name.substring(name.lastIndexOf('/')+1);
         };
 
-        const line_lookup:Map<number,number> = new Map(); //section start -> line number
+        const line_lookup:Map<SplitSection,number> = new Map(); //section -> line number
 
         const linear_splits = this.splits.splits.flatMap((split,index) => split.sections.map(section => {
-            return {name:friendly_name(split.description.name),index:index,section:section};
+            return {name:friendly_name(split.description.name),split_index:index,section:section};
         }));
-        linear_splits.sort((a,b) => a.section.start - b.section.start);
-        linear_splits.push({name:"",index:-1,section:{start:Infinity,end:Infinity,name:""}}); //Stop element to make the algo work nicely
+        
+        const per_section = _.groupBy(linear_splits,s=>s.section.name);
+
+        for(const section in per_section) {
+            per_section[section].sort((a,b) => a.section.start - b.section.start);
+            per_section[section].push({name:"",split_index:-1,section:{start:Infinity,end:Infinity,name:section}});
+        }
         
         const split_symbols = [];
         
-        let current_split = {name:"",index:-1,section:{start:0,end:linear_splits[0].section.start,name:""}};
+        let current_splits = [];
+        let current_split = {name:"",split_index:-1,section:{start:0,end:0,name:""}};
+
         let current_lines:Array<typeof this.parsed_symbols.lines[0]> = [];
 
         this.parsed_symbols.lines.forEach(line => {
-            if(line.address >= current_split.section.end) {
+            if(line.address >= current_split.section.end || line.section !== current_split.section.name) {
                 split_symbols.push({split:current_split,lines:current_lines});
                 current_lines = [];
-                while((current_split = linear_splits.shift()!).section.end <= line.address) {}
-                if(current_split.section.start > line.address) {
-                    linear_splits.unshift(current_split);
-                    current_split = {name:"",index:-1,section:{name:"",start:line.address,end:linear_splits[0].section.start}};
+
+                if(line.section in per_section) {
+                    current_splits = per_section[line.section];
+                    while((current_split = current_splits.shift()!).section.end <= line.address) {}
+                    if(current_split.section.start > line.address) {
+                        current_splits.unshift(current_split);
+                        current_split = {name:"",split_index:-1,section:{name:line.section,start:line.address,end:current_splits[0].section.start}};
+                    }
                 }
-                line_lookup.set(current_split.section.start,line.line);
+                else {
+                    current_split = {name:"",split_index:-1,section:{name:line.section,start:line.address,end:Infinity}};
+                }
+                line_lookup.set(current_split.section,line.line);
             }
             current_lines.push(line);
         });

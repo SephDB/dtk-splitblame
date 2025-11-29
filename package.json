@@ -40,6 +40,7 @@
   },
   "devDependencies": {
     "@types/jest": "^30.0.0",
+    "@types/lodash": "^4.17.21",
     "@types/node": "22.x",
     "@types/vscode": "^1.103.0",
     "@typescript-eslint/eslint-plugin": "^8.39.0",
@@ -52,6 +53,7 @@
     "typescript": "^5.9.2"
   },
   "dependencies": {
+    "lodash": "^4.17.21",
     "runtypes": "^7.0.4",
     "typescript-parsec": "^0.3.4"
   }
