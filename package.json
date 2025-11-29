@@ -1,0 +1,57 @@
+{
+  "name": "dtk-splitblame",
+  "publisher": "SephDB",
+  "displayName": "DTK-SplitBlame",
+  "description": "Shows splits while editing symbols.txt in a dtk project",
+  "version": "0.0.1",
+  "engines": {
+    "vscode": "^1.103.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "activationEvents": [],
+  "main": "./out/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "dtk-splitblame.toggle",
+        "title": "Toggle DTK Split Blame",
+        "when": "resourceFilename == symbols.txt"
+      }
+    ],
+    "menus": {
+      "commandPalette": [
+        {
+          "command": "dtk-splitblame.toggle",
+          "when": "resourceFilename == symbols.txt"
+        }
+      ]
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "pretest": "npm run compile && npm run lint",
+    "lint": "eslint src",
+    "test": "jest"
+  },
+  "devDependencies": {
+    "@types/jest": "^30.0.0",
+    "@types/node": "22.x",
+    "@types/vscode": "^1.103.0",
+    "@typescript-eslint/eslint-plugin": "^8.39.0",
+    "@typescript-eslint/parser": "^8.39.0",
+    "@vscode/test-cli": "^0.0.11",
+    "@vscode/test-electron": "^2.5.2",
+    "eslint": "^9.32.0",
+    "jest": "^30.1.3",
+    "ts-jest": "^29.4.1",
+    "typescript": "^5.9.2"
+  },
+  "dependencies": {
+    "runtypes": "^7.0.4",
+    "typescript-parsec": "^0.3.4"
+  }
+}
