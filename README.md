@@ -11,9 +11,3 @@ Hover over the split name to get hyperlinks within your document to go to other 
 ## Known Issues
 
 The toggle is per editor tab group. Moving a tab to a new tab group will require you to toggle the blame view again once it's there. VSCode API makes it hard to track these.
-
-## Release Notes
-
-### 0.0.1
-
-Initial release.
