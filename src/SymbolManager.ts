@@ -110,7 +110,7 @@ export class SymbolManager {
             s.sections.forEach(section => {
                 let details = `**${section.name}**: 0x${section.start.toString(16).toUpperCase()}-0x${section.end.toString(16).toUpperCase()}`;
                 const line = line_lookup.get(section);
-                if(line) {
+                if(line !== undefined) {
                     const args = [{ lineNumber: line, at: 'center' }];
                     const commandUri = vscode.Uri.parse(
                     `command:revealLine?${encodeURIComponent(JSON.stringify(args))}`
