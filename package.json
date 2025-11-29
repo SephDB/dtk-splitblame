@@ -4,6 +4,7 @@
   "displayName": "DTK-SplitBlame",
   "description": "Shows splits while editing symbols.txt in a dtk project",
   "version": "0.0.1",
+  "repository": "https://github.com/SephDB/dtk-splitblame",
   "engines": {
     "vscode": "^1.103.0"
   },
