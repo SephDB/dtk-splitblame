@@ -111,9 +111,9 @@ export class SymbolManager {
                 let details = `**${section.name}**: 0x${section.start.toString(16).toUpperCase()}-0x${section.end.toString(16).toUpperCase()}`;
                 const line = line_lookup.get(section);
                 if(line !== undefined) {
-                    const args = [{ lineNumber: line, at: 'center' }];
+                    const args = [line];
                     const commandUri = vscode.Uri.parse(
-                    `command:revealLine?${encodeURIComponent(JSON.stringify(args))}`
+                    `command:dtk-splitblame.goto?${encodeURIComponent(JSON.stringify(args))}`
                     );
                     details = `[${details}](${commandUri})`;
                 }

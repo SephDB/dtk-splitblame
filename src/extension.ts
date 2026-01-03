@@ -48,6 +48,13 @@ export function activate(context: vscode.ExtensionContext) {
 		}
 	}));
 
+	context.subscriptions.push(vscode.commands.registerCommand('dtk-splitblame.goto',(line:number) => {
+		let editor = vscode.window.activeTextEditor!;
+		let range = editor.document.lineAt(line).range;
+		editor.selection = new vscode.Selection(range.start,range.start);
+		editor.revealRange(new vscode.Range(range.start,range.start));
+	}));
+
 	vscode.window.tabGroups.onDidChangeTabGroups(e => {
 		e.closed.forEach(e => {
 			active_tabs.splice(e.viewColumn,1);
