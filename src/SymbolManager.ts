@@ -1,6 +1,15 @@
 import * as vscode from 'vscode';
 import _ from 'lodash';
-import { ParseSplits, SectionDef, SplitSection, SplitsFile } from './dtk-splits-parser';
+import { ParseSplits, SplitSection, SplitsFile } from './dtk-splits-parser';
+
+type Symbol = {
+    name: string;
+    section:string;
+    address:number;
+    attrs:string;
+};
+
+type LineNumber = number;
 
 export class SymbolManager {
     private decorationType: vscode.TextEditorDecorationType;
@@ -8,10 +17,10 @@ export class SymbolManager {
 
     private active_mapping:readonly Set<vscode.Uri>[];
     private symbols:vscode.TextDocument;
-    private parsed_symbols;
+    private parsed_symbols:{lines:Map<LineNumber,Symbol>,errors:LineNumber[]};
     private splits_uri:vscode.Uri;
     private splits:SplitsFile|undefined;
-    private hovers:Map<number,vscode.MarkdownString>;
+    private hovers:Map<LineNumber,vscode.MarkdownString>;
 
     private watcher:vscode.FileSystemWatcher;
     private symbols_watcher:vscode.Disposable;
@@ -64,13 +73,13 @@ export class SymbolManager {
 
     private parseDoc() {
         const line_regex = /^\s*(?<name>[^\s=]+)\s*=\s*(?:(?<section>[A-Za-z0-9.]+):)?(?<addr>[0-9A-Fa-fXx]+);(?:\s*\/\/\s*(?<attrs>.*))?$/;
-        const parsed = [];
+        const parsed = new Map<number,Symbol>();
         const errors = [];
         for(let line_index = 0; line_index < this.symbols.lineCount; ++line_index) {
             const line:vscode.TextLine = this.symbols.lineAt(line_index);
             const match = line.text.match(line_regex);
             if(match && match.groups) {
-                parsed.push({line:line_index,name:match.groups.name,section:match.groups.section,address:+match.groups.addr});
+                parsed.set(line_index,{name:match.groups.name,section:match.groups.section,address:+match.groups.addr,attrs:match.groups.attrs});
             }
             else {
                 if(!(line_index === this.symbols.lineCount-1 && line.text==="")) {
@@ -93,7 +102,7 @@ export class SymbolManager {
         return symbol;
     }
 
-    public getHover(line:number) {
+    public getHover(line:LineNumber) {
         return this.hovers.get(line);
     }
 
@@ -143,7 +152,7 @@ export class SymbolManager {
 
         let options:vscode.DecorationOptions[] = split_symbols.flatMap(({split,lines}) => lines.map(line => {
             const ret:vscode.DecorationOptions = {
-                range: new vscode.Range(new vscode.Position(line.line, 0),new vscode.Position(line.line,0)),
+                range: new vscode.Range(new vscode.Position(line, 0),new vscode.Position(line, 0)),
                 renderOptions: {
                     before: {
                         contentText: split.name.padEnd(max_width,'\u00A0'),
@@ -151,7 +160,7 @@ export class SymbolManager {
                 }
             };
             if(split.split_index >= 0) {
-                hover_lookup.set(line.line,hovers[split.split_index]);
+                hover_lookup.set(line,hovers[split.split_index]);
             }
             return ret;
         }));
@@ -190,14 +199,14 @@ export class SymbolManager {
             per_section[section].push({name:"",split_index:-1,section:{start:Infinity,end:Infinity,name:section}});
         }
         
-        const split_symbols = [];
+        const split_symbols:{split:{name:string,split_index:number,section:SplitSection},lines:LineNumber[]}[] = [];
         
         let current_splits = [];
         let current_split = {name:"",split_index:-1,section:{start:0,end:0,name:""}};
 
-        let current_lines:Array<typeof this.parsed_symbols.lines[0]> = [];
+        let current_lines:LineNumber[] = [];
 
-        this.parsed_symbols.lines.forEach(line => {
+        this.parsed_symbols.lines.forEach((line,line_number) => {
             if(line.address >= current_split.section.end || line.section !== current_split.section.name) {
                 split_symbols.push({split:current_split,lines:current_lines});
                 current_lines = [];
@@ -213,9 +222,9 @@ export class SymbolManager {
                 else {
                     current_split = {name:"",split_index:-1,section:{name:line.section,start:line.address,end:Infinity}};
                 }
-                line_lookup.set(current_split.section,line.line);
+                line_lookup.set(current_split.section,line_number);
             }
-            current_lines.push(line);
+            current_lines.push(line_number);
         });
         split_symbols.push({split:current_split,lines:current_lines});
 
