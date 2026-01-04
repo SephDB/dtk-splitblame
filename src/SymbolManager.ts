@@ -14,6 +14,7 @@ export class SymbolManager {
     private hovers:Map<number,vscode.MarkdownString>;
 
     private watcher:vscode.FileSystemWatcher;
+    private symbols_watcher:vscode.Disposable;
 
     public constructor(symbols:vscode.TextDocument,splits_uri:vscode.Uri,active_mapping:readonly Set<vscode.Uri>[]) {
         this.symbols = symbols;
@@ -26,11 +27,15 @@ export class SymbolManager {
         this.watcher = vscode.workspace.createFileSystemWatcher(new vscode.RelativePattern(splits_uri,'*'));
         this.watcher.onDidChange(async e => {
             await this.updateSplits();
-            vscode.window.visibleTextEditors.forEach(editor => {
-                if(editor.document === this.symbols && this.active_mapping[editor.viewColumn!].has(this.symbols.uri)) {
-                    this.open(editor);
-                }
-            });
+            this.refresh();
+        });
+
+        this.symbols_watcher = vscode.workspace.onDidChangeTextDocument(async e => {
+            if(e.document === this.symbols) {
+                this.parsed_symbols = this.parseDoc();
+                this.updateRanges();
+                this.refresh();
+            }
         });
         
         this.decorationType = vscode.window.createTextEditorDecorationType({
@@ -45,7 +50,16 @@ export class SymbolManager {
 
     public dispose() {
         this.watcher.dispose();
+        this.symbols_watcher.dispose();
         this.decorationType.dispose();
+    }
+
+    private refresh() {
+        vscode.window.visibleTextEditors.forEach(editor => {
+            if(editor.document === this.symbols && this.active_mapping[editor.viewColumn!].has(this.symbols.uri)) {
+                this.open(editor);
+            }
+        });
     }
 
     private parseDoc() {
